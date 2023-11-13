@@ -5,11 +5,9 @@
 
 ## 1. ML
 
-## 2. DL
+## 2. DL-basic
 
-### 2.1 Basic
-
-#### 2.1.1 Transformer
+### 2.1.1 Transformer
 
 * [Attention is all you need! ](https://arxiv.org/pdf/1706.03762.pdf)
 
@@ -49,14 +47,34 @@ v: [batch_size, src_len, dv]
 * 至于代码怎么实现，很牛逼，直接把头的维度弄到batch里
 
 
-### 2.2 NLP
+## 2.2 NLP
 
-#### 2.2.1 Bert
+### 2.2.1 Bert
 
-### 2.3 CV
+## 2.3 CV
 
+### 2.3.1 self-supervised
 
+#### Weakly Supervised Contrastive Learning
+MK师兄的论文，主要是解决label很少的图像分类任务
 
+![Alt text](figs/WCL_framework.png)
+
+原有的loss between positive pair i, j：
+![Alt text](figs/NCE_loss_original.png)
+这里的问题在于，这会让两个属于相同class的positive sample的similarity变小（分母），虽然会让这个positive pair i, j的similarity变大（分子），叫做 instance discrimination。所以这里这个损失函数可以改良一下：
+![Alt text](figs/NCE_loss_improved.png)
+这里的y表示i，j 是否是同一个class
+那么怎么整这个y出来呢？
+简单来说，对于一个batch，每个样本有一个embedding vector，然后对每个样本找1- nearest neighbor，这样的pair就连起来。那么问题就很轻易的转化为，给定一组nodes和edges，找每个联通量，每个联通量属于同一个weak label。
+![Alt text](figs/WCL_WL_generation.png)
+好处： parameter-free，reciprocal，deterministic process
+
+这swapped version是啥子意思？？
+![Alt text](figs/Swap_loss.png)
+这y是怎么当label的，咋加到公式里？
+
+还有一个问题是，multi-crop可以提高representation的质量。但是怎么剪，也是有说法的。光增加数量肯定不行，不光会增加计算量，还会overlap。这里用了KNN based low-resolution multi-crop strategy 来解决这两个问题。因为每个epoch都会产生一个primary feature h1，基于此用KNN来找每个sample的crops，用于下个epoch的训练。
 
 
 
