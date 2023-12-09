@@ -1,4 +1,3 @@
-#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
 from openai import OpenAI
 client = OpenAI()
 
