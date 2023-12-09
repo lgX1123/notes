@@ -75,7 +75,7 @@ v: [batch_size, src_len, dv]
 
 ### 2.3.1 self-supervised
 
-#### Weakly Supervised Contrastive Learning
+#### 2.3.1.1 Weakly Supervised Contrastive Learning
 MK师兄的论文，主要是解决label很少的图像分类任务
 
 ![Alt text](figs/WCL_framework.png)
@@ -96,11 +96,75 @@ MK师兄的论文，主要是解决label很少的图像分类任务
 
 还有一个问题是，multi-crop可以提高representation的质量。但是怎么剪，也是有说法的。光增加数量肯定不行，不光会增加计算量，还会overlap。这里用了KNN based low-resolution multi-crop strategy 来解决这两个问题。因为每个epoch都会产生一个primary feature h1，基于此用KNN来找每个sample的crops，用于下个epoch的训练。
 
+### 2.3.2 synthetic data for image classification
+
+#### 2.3.2.1 IS SYNTHETIC DATA FROM GENERATIVE MODELS READY FOR IMAGE RECOGNITION?
+
+focus on two perspectives: synthetic data for improving classification models in **data-scarce** settings (i.e. zero-shot and fewshot), and synthetic data for large-scale model pre-training for **transfer learning**.
+
+**用 sota t2i generative model 来做image recognition.**
+
+用GLIDE来生成，CLIP来分类
+
+对于measuring of diversity，用CLIP的feature来做(算两个的correlation)，text和image都可以算
+
+1. zero-shot
+
+如何生成：
+Basic strategy: 用label names **as** prompts to generate image，用这text和对应的image来训练classifier (冻结feature extractor)。具体实现：2000 synthetic images for each class
+Language enhancement: 用llm来word2sentence as prompts. 具体实现：200 sentences for each class. 2000 synthetic images for each class.
 
 
+如何增加diversity：
+用llm，t5，word2sentence
+
+如何减少noise，增加robustness：
+word2sentence过程可能会引入noise，那么就要验证其quality。这里的方法是不管text如何，就用CLIP的zero shot classification confidence filter来验证image的质量。至于robustness，就是对loss进行一些调整。
+
+主要结果：
+synthetic data确实有用，且只tune classifier的结果最好，参数tune更多效果会变差。这感觉就是clip本来就很牛逼的原因。
+然后这里也验证了 如果用resnet来训的话(CIFAR100，这里应该就不是zero-shot)，accuracy会爆低。还有一个有趣的现象是，本来每个class是500张，如果减少的95张，效果也差不多，说明其实信息是冗余的，只堆数量肯定不行，要提取更多信息。（不是，做real shot比 clip的zero shot准确度还低。。
+
+2. few shot
+
+如何生成：
+吸取zero shot的经验，用Language enhancement + filter来作为basic strategy. 
+基于此，又有两个strategy:
+Real Filtering: 用real data 来验证 synthetic data
+Real Guidance: 用 real data 作为生成图的基础。很像 add conditional control to t2i
+结果是Real Guidance 最好，Real Filtering其次
+
+训练：
+这里又提出两种训练方法，一个是phrase-wise(real data 和 synthetic data 分别训练)，一个是混合。结果是混合的比较好。**都是只训练classifier**。
+这里还使用了 frozen BN. 冻结的话就是保留预训练的东西，如果不冻结有害，说明这个新数据集和原数据集差异很大(synthetic)，或者是数量太少(real data)
 
 
+3. for pre-training for transfer learning
+
+使用 synthetic data来pre-train模型，这里用了resnet50 和 ViT作为backbone，后者稍好。
+
+那么这里可分为两类：
+downstream-aware 也就是对下游任务有感知，比如说下游是对CIFAR100进行分类，那么在预训练时，就可以使用这些label信息。
+downstream-agnostic，对下游任务没有感知，这里使用了relatively general and diverse label space such as ImageNet-1K。(这里还提到使用了supervised 和 self-supervised 两种预训练方法，我不太了解具体的self-supervised的做法，就先不看了)
+
+![Alt text](figs/2-3-2-1-1.png)
+
+上图结论：用synthetic来pre-train效果没用ImageNet效果好(但是差的很少，提高数量甚至能超过，这是比较令人惊讶的)，但比没pre-train效果好。如果pre-train on ImageNet，再pre-train on synthetic data，效果更好但很少。提高synthetic data的数量，效果也会提高但很少。
 
 
+***总结：***
+这篇可以总结为两部分
+利用synthetic data来微调pre-trained模型(这里是强大的clip)。
+利用synthetic data来pre-train 模型，再用“好”的数据集(balanced, adequate) CIFAR 来验证其性能。
 
+不同点：
+我是用synthetic + real 来train一个模型，可以用resent。(也就是他在文中只提了一嘴性能很低的地方)
+当然如果要用到clip来微调的话，是会与这篇重叠，可以再思考下加点啥
+
+可借鉴之处：
+不同strategy的使用和对比。
+比如，单用label的信息来generate， 用label信息to sentence来generate，  用label信息 to sentence + original image 做 text conditional generation。 这三者相比
+
+
+#### 2.3.2.2 Diversity is Definitely Needed: Improving Model-Agnostic Zero-shot Classification via Stable Diffusion
 
