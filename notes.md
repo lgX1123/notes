@@ -159,12 +159,81 @@ downstream-agnostic，对下游任务没有感知，这里使用了relatively ge
 
 不同点：
 我是用synthetic + real 来train一个模型，可以用resent。(也就是他在文中只提了一嘴性能很低的地方)
-当然如果要用到clip来微调的话，是会与这篇重叠，可以再思考下加点啥
+当然如果要用在大数据集如ImageNet上预训练好的权重，或者是用到clip来微调的话，是会与这篇重叠，可以再思考下加点啥
 
 可借鉴之处：
+很多地方都能借鉴哇
 不同strategy的使用和对比。
-比如，单用label的信息来generate， 用label信息to sentence来generate，  用label信息 to sentence + original image 做 text conditional generation。 这三者相比
+比如，单用label的信息来generate， 用label信息to sentence来generate，  用label信息 to sentence + original image 做 conditional generation。 这三者相比
 
+是否还可以加上不同diffusion model的对比？
 
 #### 2.3.2.2 Diversity is Definitely Needed: Improving Model-Agnostic Zero-shot Classification via Stable Diffusion
 
+任务：ModelAgnostic Zero-Shot Classification，
+'training non-specific classification architectures (downstream models) to classify real images without using any real images during training'
+全用synthetic data 训练 下游模型
+
+着重于 增加diversity
+
+生成图像：stable diffusion
+分类：resnet(with pre-trained ImageNet weights), ViT. 他这里又说是Zero-shot，我个人理解他Model Agnostic Zero-Shot Classification (MA-ZSC)的意思应该是 没有用到任何原有class数据来训练，但是有哪些class是知道的。基本用的都是resnet，最后vit来比较
+
+这里还用了原数据集中的图片：‘More explicitly, we randomly sample 1% of the images for each class in CIFAR10 [13], totalling 60 images per class. These images were then encoded using CLIP’s image encoder to obtain their feature representations. Next, we perform linear interpolation of these representations and use the interpolated feature representation as conditioning for the diffusion image generation process.’
+比如说每个class有60张图(real data)，随机选3张出来avg，作为diffusion的初始。那这不是也用到了原始数据吗。。。
+
+最重要最神秘的part， 用来提升diversity的bag of tricks！：
+举了几种prompt方法：
+“an image of a {class}”
+“an photo of a {class}”
+“{class}”
+“a {domain} of a {class}”，这里domain可以是photo, drawing, painting, sketch, collage, poster, digital art image, rock drawing, stick figure, 3D rendering(CIFAR)，且不同数据集的domain不一样，还是面向数据集的。
+还有就是调整Random Unconditional Guidance
+然后 结合起来就大大提升diversity了
+感觉如果用chatgpt来生成 prompts 应该是会更diverse
+
+***总结：***
+说是zero-shot，看下来好像还是会用到原始数据(使用class信息，和 使用原数据来generate data两种)。
+使用全synthetic data来训练模型，用了resnet，with pre-trained ImageNet weights
+
+不同点：
+如果任务是longtail，那么其实就可以使用原始数据，用其来获取synthetic data。
+用chatgpt来提升diversity
+
+可借鉴部分：
+在用chatgpt的时候，可以加入 domain。
+
+#### 2.3.2.3 Training on Thin Air: Improve Image Classification with Generated Data
+
+![Alt text](figs/2-3-2-3-1.png)
+与prompt-base 的方法不同，这篇主要是将real data encoder到embedding，再添加noise来增加diversity，然后通过这个来生成数据。
+‘In the first stage, we map each image to the model’s latent space, generating a dataset of latent embedding vectors. Then, we produce novel image variants by running the inverse diffusion process conditioned on perturbed versions of these vectors.’
+
+感觉设计到stable diffusion的结构，有点看不懂
+
+***总结：***
+非 prompt-base 
+
+可借鉴之处：
+探究与data augmentation tech 的 compatibility
+探究quality of generative model， size of dataset 与 performance的关系
+
+#### 2.3.2.4 Synthetic Data from Diffusion Models Improves ImageNet Classification
+
+仅在ImageNet上
+
+方法：
+1. 找各个分辨率的SOTA(基于FID, IS) 生图模型。
+2. 用这些模型生成SOTA 数据(基于CAS)
+3. 用这些数据(combining synthetic data with real data) 训练分类模型
+
+使用FID或者是IS来作为 synthetic data 的 quality的评价指标不合适，可能会造成该评价指标和最终分类效果的不一致。这里提出使用classification accuracy score (CAS) ，'measures classification performance on the ImageNet validation set for ResNet-50 models [20] trained on generated data.'
+
+介绍了一系列 怎么把large-scale text-to-image model fine-tune成 专门为ImageNet生成 synthetic data 的模型
+
+***总结：***
+用real data来fine tune 生图模型，使其成为一个为下游分类任务的模型。再用该模型生图来train分类模型。
+
+可借鉴之处：
+CAS，可以考虑如何把这个加进去，比如说先用longtail数据train，然后synthetic data过一遍这个模型来filtering，然后再用 balanced (syn + real) train第二阶段
+不同分辨率的影响
