@@ -9,7 +9,7 @@
 
 ### 2.1.1 Transformer
 
-* [Attention is all you need! ](https://arxiv.org/pdf/1706.03762.pdf)
+#### 2.1.1.1 Attention is all you need
 
 architechture:
 ![Alt text](/figs/transformer.png)
@@ -46,8 +46,28 @@ v: [batch_size, src_len, dv]
 公式很好懂。W是linear层
 * 至于代码怎么实现，很牛逼，直接把头的维度弄到batch里
 
+6. **Position-wise Feed-Forward Networks**
+$$ FFN(x) = max(0, xW_1 + b_1)W_2 + b_2 $$
+也就是两个线性层，中间ReLU激活。这里的两个W，可以转换d的大小，也就是feed forward里面的embedding的dim，功能有点像两个size 1 的卷积核。
+
+7. **embedding and softmax**
+这里提到，两个embedding层 以及最后的pre-softmax层 的weight matrix是共享的
+
+8. **Positional Encoding**
+$$PE_{(pos, 2i)} = sin(\frac{pos}{10000^\frac{2i}{d_{model}}})$$
+$$PE_{(pos, 2i + 1)} = cos(\frac{pos}{10000^\frac{2i}{d_{model}}})$$
+
+因为输入是 ```n x d```的，那么位置编码也要与之对应，所以pos对应n，i对应d
+
+可以看出，这样的位置编码是fixed。
+为什么选择这样的位置编码？“we hypothesized it would allow the model to easily learn to attend by relative positions, since for any fixed offset k, PEpos+k can be represented as a linear function of PEpos.”
+主要是**relative positions**，sin(pos)可以是sin(pos + k)的线性表示
+虽然这么解释，但还是不太理解为什么
+
+
 ### 2.1.2 ResNet
-* [Deep Residual Learning for Image Recognition](https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
+
+#### 2.1.2.1 Deep Residual Learning for Image Recognition
 
 残差连接：
 ![Alt text](figs/Residual_connection.png)
@@ -66,10 +86,26 @@ v: [batch_size, src_len, dv]
 左边是较浅的网络的building block，如resnet-34。右边是给较深的，如50，101，152。这样设计呢是为了减少训练开支。
 **这里的1x1卷积就用得非常精髓，用来改变通道数**，可以让3x3层成为最小的输入输出的“瓶颈”。
 
+### 2.1.3 ViT 
+
+#### 2.1.3.1 An image is worth 16x16 words: Transformers for image recognition at scale
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 2.2 NLP
 
 ### 2.2.1 Bert
+
 
 ## 2.3 CV
 
@@ -237,3 +273,7 @@ downstream-agnostic，对下游任务没有感知，这里使用了relatively ge
 可借鉴之处：
 CAS，可以考虑如何把这个加进去，比如说先用longtail数据train，然后synthetic data过一遍这个模型来filtering，然后再用 balanced (syn + real) train第二阶段
 不同分辨率的影响
+
+
+
+
